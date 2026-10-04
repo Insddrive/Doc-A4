@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Doc to A4</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        body { background-color: #ffffff; -webkit-tap-highlight-color: transparent; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: #111827; }
+        .hide { display: none !important; }
+        
+        /* 4-Point Crop Styles (Precision Crosshair) */
+        #cropContainer { position: relative; display: inline-block; touch-action: none; user-select: none; }
+        #cropImg { max-width: 100%; max-height: 65vh; display: block; border: 1px solid #e5e7eb; }
+        #cropSvg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        
+        .crop-handle {
+            position: absolute; width: 44px; height: 44px; margin-top: -22px; margin-left: -22px;
+            background-color: transparent; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            cursor: grab; pointer-events: auto; z-index: 10;
+        }
+        .crop-handle::before { content: ''; position: absolute; width: 12px; height: 12px; border: 2px solid #ef4444; border-radius: 50%; background: transparent; transition: 0.2s; }
+        .crop-handle::after { content: ''; position: absolute; width: 2px; height: 2px; background: #ef4444; border-radius: 50%; }
+        .crop-handle:active::before { border-color: #000; transform: scale(1.3); }
+        .crop-handle:active::after { background: #000; }
+        .crop-handle:active { cursor: grabbing; }
+
+        /* A4 Preview */
+        .a4-preview {
+            width: 100%; aspect-ratio: 210 / 297;
+            background: #fff; position: relative; border: 1px solid #d1d5db; overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+        .card-preview { position: absolute; border: 1px solid rgba(0,0,0,0.1); background-size: cover; background-position: center; transition: all 0.05s linear; }
+        
+        /* Ultra Minimal Sliders */
+        .minimal-slider { -webkit-appearance: none; background: transparent; outline: none; width: 100%; margin: 0; }
+        .minimal-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%;
+            background: #111827; cursor: pointer; margin-top: -6px; transition: transform 0.1s;
+            border: 2px solid #fff; box-shadow: 0 0 0 1px #111827;
+        }
+        .minimal-slider::-webkit-slider-runnable-track { width: 100%; height: 2px; cursor: pointer; background: #e5e7eb; border-radius: 2px; }
+        .minimal-slider:active::-webkit-slider-thumb { transform: scale(1.2); }
+
+        /* Loader & Modals */
+        #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; color: #111; z-index: 60; flex-direction: column; }
+        .spinner { border: 2px solid #e5e7eb; border-top: 2px solid #111; border-radius: 50%; width: 30px; height: 30px; animation: spin 0.8s linear infinite; margin-bottom: 1rem; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .animate-fade-in { animation: fadeIn 0.15s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        
+        /* Buttons */
+        .btn-minimal { border: 1px solid #e5e7eb; background: #fff; transition: all 0.2s; }
+        .btn-minimal:hover { background: #f9fafb; border-color: #d1d5db; }
+        .btn-dark { background: #111827; color: #fff; transition: all 0.2s; }
+        .btn-dark:hover { background: #000; }
+    </style>
+</head>
+<body class="antialiased">
+
+<!-- Global Loader -->
+<div id="loader" class="hide">
+    <div class="spinner"></div>
+    <p class="text-sm font-medium tracking-wide">Processing...</p>
+</div>
+
+<!-- Custom File Name Dialog (Minimal) -->
+<div id="nameDialog" class="hide fixed inset-0 bg-gray-900 bg-opacity-30 flex justify-center items-center z-50 px-4 backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in border border-gray-100">
+        <div class="p-6">
+            <h3 class="text-base font-semibold mb-1">Save File As</h3>
+            <p class="text-xs text-gray-500 mb-5">Enter a name for your document.</p>
+            <input type="text" id="fileNameInput" value="A4_Document" class="w-full border-b-2 border-gray-200 py-2 text-sm outline-none focus:border-black transition rounded-none bg-transparent">
+        </div>
+        <div class="flex border-t border-gray-100 bg-gray-50">
+            <button onclick="closeNameDialog()" class="flex-1 p-3 text-xs font-semibold text-gray-500 hover:text-black transition">CANCEL</button>
+            <button id="confirmNameBtn" class="flex-1 p-3 text-xs font-bold text-black border-l border-gray-200 hover:bg-gray-100 transition">DOWNLOAD</button>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Notification Dialog -->
+<div id="notifyDialog" class="hide fixed inset-0 bg-gray-900 bg-opacity-30 flex justify-center items-center z-50 px-4 backdrop-blur-sm">
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in text-center border border-gray-100">
+        <div class="p-6">
+            <div class="w-10 h-10 rounded-full bg-black flex items-center justify-center mx-auto mb-4">
+                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            </div>
+            <p id="notifyMessage" class="text-sm font-medium text-gray-700 mb-2"></p>
+        </div>
+        <div class="border-t border-gray-100">
+            <button id="notifyOkBtn" class="w-full p-3 text-xs font-bold text-black hover:bg-gray-50 transition">CONTINUE</button>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-xl mx-auto p-4 py-8">
+
+    <!-- UPLOAD SECTION -->
+    <div id="section-upload" class="text-center mt-4">
+        <h1 class="text-2xl font-bold tracking-tight mb-8">Doc To A4</h1>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button onclick="startProcess('front_back')" class="btn-minimal flex flex-col items-center justify-center p-6 rounded-xl h-36">
+                <svg class="w-8 h-8 text-gray-800 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
+                <span class="text-xs font-bold tracking-wider">FRONT + BACK</span>
+            </button>
+            <button onclick="startProcess('front')" class="btn-minimal flex flex-col items-center justify-center p-6 rounded-xl h-36">
+                <svg class="w-8 h-8 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                <span class="text-xs font-bold tracking-wider text-gray-500">FRONT ONLY</span>
+            </button>
+            <button onclick="startProcess('back')" class="btn-minimal flex flex-col items-center justify-center p-6 rounded-xl h-36">
+                <svg class="w-8 h-8 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                <span class="text-xs font-bold tracking-wider text-gray-500">BACK ONLY</span>
+            </button>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+    </div>
+
+    <!-- CROP SECTION -->
+    <div id="section-crop" class="hide text-center mt-2">
+        <div class="flex justify-center mb-6">
+            <div id="cropContainer">
+                <img id="cropImg" src="" alt="Crop" draggable="false">
+                <svg id="cropSvg">
+                    <polygon id="cropPoly" fill="rgba(17, 24, 39, 0.05)" stroke="#111" stroke-width="1"/>
+                </svg>
+                <div id="pt1" class="crop-handle"></div>
+                <div id="pt2" class="crop-handle"></div>
+                <div id="pt3" class="crop-handle"></div>
+                <div id="pt4" class="crop-handle"></div>
+            </div>
+        </div>
+
+        <div class="flex justify-between gap-3">
+            <button onclick="resetApp()" class="btn-minimal flex-1 py-3 rounded-lg flex justify-center items-center">
+                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <button onclick="rotateImage()" class="btn-minimal flex-1 py-3 rounded-lg flex justify-center items-center text-xs font-bold tracking-widest">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                ROTATE
+            </button>
+            <button onclick="confirmCrop()" class="btn-dark flex-1 py-3 rounded-lg flex justify-center items-center">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- PREVIEW & ADJUSTMENTS SECTION -->
+    <div id="section-preview" class="hide mt-4">
+        
+        <!-- Minimal Grid Layout for A4 & Edge Sliders -->
+        <div class="flex justify-center mb-8">
+            <div class="flex items-stretch gap-2.5">
+                
+                <!-- Left Column (X Slider + A4 Paper + Size Slider) -->
+                <div class="flex flex-col gap-2.5 w-[280px] sm:w-[320px]">
+                    <!-- X Slider (Top Edge) -->
+                    <input type="range" id="xSlider" min="0" max="100" value="50" class="minimal-slider" oninput="updatePreview()">
+                    
+                    <!-- A4 Box -->
+                    <div class="a4-preview w-full" id="a4Box">
+                        <div id="frontPreviewObj" class="card-preview hide"></div>
+                        <div id="backPreviewObj" class="card-preview hide"></div>
+                    </div>
+                    
+                    <!-- Size Slider (Bottom Edge) - Min 100% (No reduction) -->
+                    <input type="range" id="sizeSlider" min="100" max="250" value="100" class="minimal-slider" oninput="updatePreview()">
+                    
+                    <!-- Tiny labels for bottom slider -->
+                    <div class="flex justify-between items-center mt-1 px-1">
+                        <span class="text-[10px] font-bold text-gray-400 tracking-wider">SIZE <span id="sizeValText" class="text-black ml-1">100%</span></span>
+                        <button onclick="resetSliders()" class="text-[10px] font-bold text-gray-400 hover:text-black tracking-wider flex items-center">
+                            <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            RESET
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Column (Y Slider) -->
+                <!-- Wrapper ensures rotation works smoothly and dynamically matches height -->
+                <div class="relative w-4" id="ySliderContainer">
+                    <input type="range" id="ySlider" min="0" max="100" value="50" class="minimal-slider absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 origin-center" oninput="updatePreview()">
+                </div>
+
+            </div>
+        </div>
+
+        <div id="layoutContainer" class="mb-4">
+            <select id="layoutSelect" onchange="updatePreview()" class="w-full bg-white border border-gray-200 rounded-lg p-3 text-xs font-bold tracking-widest text-gray-700 outline-none focus:border-black transition">
+                <option value="vertical">LAYOUT: VERTICAL</option>
+                <option value="horizontal">LAYOUT: HORIZONTAL</option>
+            </select>
+        </div>
+
+        <div class="flex flex-col gap-3">
+            <button onclick="openNameDialog('JPG')" class="btn-minimal w-full py-3.5 rounded-lg flex justify-center items-center text-xs font-bold tracking-widest text-black">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                DOWNLOAD JPG
+            </button>
+            <button onclick="openNameDialog('PDF')" class="btn-minimal w-full py-3.5 rounded-lg flex justify-center items-center text-xs font-bold tracking-widest text-black">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                DOWNLOAD PDF
+            </button>
+            <button onclick="resetApp()" class="w-full py-3 mt-1 bg-transparent text-gray-400 hover:text-black font-bold text-xs tracking-widest transition">
+                START NEW
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentProcess = ''; let currentStep = ''; 
+    let frontImgData = null; let backImgData = null; 
+    let originalImgObj = null; let downloadTypePending = ''; let notifyCallback = null;
+
+    const A4_W = 210, A4_H = 297;
+    const CARD_W = 85.60, CARD_H = 53.98;
+    let pts = [{x: 10, y: 10}, {x: 90, y: 10}, {x: 90, y: 90}, {x: 10, y: 90}];
+    let activePoint = null;
+
+    function showSection(id) {
+        ['section-upload', 'section-crop', 'section-preview'].forEach(s => document.getElementById(s).classList.add('hide'));
+        document.getElementById(id).classList.remove('hide');
+        document.body.style.overflow = (id === 'section-crop') ? 'hidden' : 'auto';
+    }
+
+    function showNotification(msg, callback) {
+        document.getElementById('notifyMessage').innerText = msg;
+        document.getElementById('notifyDialog').classList.remove('hide');
+        notifyCallback = callback;
+    }
+    document.getElementById('notifyOkBtn').addEventListener('click', () => {
+        document.getElementById('notifyDialog').classList.add('hide');
+        if(notifyCallback) notifyCallback();
+    });
+
+    function startProcess(type) {
+        currentProcess = type; currentStep = (type === 'back') ? 'back' : 'front';
+        document.getElementById('fileInput').click();
+    }
+
+    function handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => { initCrop(ev.target.result); };
+        reader.readAsDataURL(file); e.target.value = ''; 
+    }
+
+    function initCrop(imgSrc) {
+        showSection('section-crop');
+        const img = document.getElementById('cropImg');
+        img.onload = () => {
+            originalImgObj = new Image(); originalImgObj.src = img.src;
+            pts = [{x: 10, y: 10}, {x: 90, y: 10}, {x: 90, y: 90}, {x: 10, y: 90}]; updateSVG();
+        };
+        img.src = imgSrc;
+    }
+
+    function rotateImage() {
+        if(!originalImgObj) return;
+        const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+        canvas.width = originalImgObj.naturalHeight; canvas.height = originalImgObj.naturalWidth;
+        ctx.translate(canvas.width / 2, canvas.height / 2); ctx.rotate(90 * Math.PI / 180);
+        ctx.drawImage(originalImgObj, -originalImgObj.naturalWidth / 2, -originalImgObj.naturalHeight / 2);
+        document.getElementById('cropImg').src = canvas.toDataURL('image/png');
+    }
+
+    function updateSVG() {
+        const img = document.getElementById('cropImg');
+        const w = img.offsetWidth; const h = img.offsetHeight; let pointsStr = "";
+        pts.forEach((p, i) => {
+            const px = (p.x / 100) * w; const py = (p.y / 100) * h; pointsStr += `${px},${py} `;
+            const handle = document.getElementById(`pt${i+1}`);
+            handle.style.left = `${px}px`; handle.style.top = `${py}px`;
+        });
+        document.getElementById('cropPoly').setAttribute('points', pointsStr.trim());
+    }
+
+    const container = document.getElementById('cropContainer');
+    function getPointerPos(e) {
+        const rect = container.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    function handleStart(e, index) { e.preventDefault(); activePoint = index; }
+    function handleMove(e) {
+        if (activePoint === null) return; e.preventDefault();
+        const pos = getPointerPos(e); const w = container.offsetWidth; const h = container.offsetHeight;
+        let px = Math.max(0, Math.min(100, (pos.x / w) * 100)); let py = Math.max(0, Math.min(100, (pos.y / h) * 100));
+        pts[activePoint] = {x: px, y: py}; updateSVG();
+    }
+    function handleEnd() { activePoint = null; }
+
+    [0,1,2,3].forEach(i => {
+        const el = document.getElementById(`pt${i+1}`);
+        el.addEventListener('mousedown', (e) => handleStart(e, i));
+        el.addEventListener('touchstart', (e) => handleStart(e, i), {passive: false});
+    });
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('touchmove', handleMove, {passive: false});
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchend', handleEnd);
+
+    function confirmCrop() {
+        document.getElementById('loader').classList.remove('hide');
+        setTimeout(() => {
+            const resultImg = processPerspectiveCrop();
+            if (currentStep === 'front') {
+                frontImgData = resultImg;
+                if (currentProcess === 'front_back') {
+                    currentStep = 'back'; document.getElementById('loader').classList.add('hide');
+                    showNotification("Front side OK. Upload Back side.", () => { document.getElementById('fileInput').click(); });
+                    return;
+                }
+            } else { backImgData = resultImg; }
+            document.getElementById('loader').classList.add('hide');
+            setupPreview();
+        }, 50);
+    }
+
+    function processPerspectiveCrop() {
+        const sCanvas = document.createElement('canvas');
+        const sW = originalImgObj.naturalWidth; const sH = originalImgObj.naturalHeight;
+        const maxDim = 2000; let scale = 1; if(sW > maxDim || sH > maxDim) { scale = maxDim / Math.max(sW, sH); }
+        
+        const cW = Math.round(sW * scale); const cH = Math.round(sH * scale);
+        sCanvas.width = cW; sCanvas.height = cH;
+        const sCtx = sCanvas.getContext('2d'); sCtx.drawImage(originalImgObj, 0, 0, cW, cH);
+        const sData = sCtx.getImageData(0, 0, cW, cH);
+        const corners = pts.map(p => ({ x: (p.x/100)*cW, y: (p.y/100)*cH }));
+
+        const dW = 1011; const dH = Math.round(dW * (CARD_H / CARD_W)); 
+        const dCanvas = document.createElement('canvas'); dCanvas.width = dW; dCanvas.height = dH;
+        const dCtx = dCanvas.getContext('2d'); const dData = dCtx.createImageData(dW, dH);
+
+        for (let y = 0; y < dH; y++) {
+            const yF = y / dH;
+            const lx = corners[0].x + (corners[3].x - corners[0].x) * yF; const ly = corners[0].y + (corners[3].y - corners[0].y) * yF;
+            const rx = corners[1].x + (corners[2].x - corners[1].x) * yF; const ry = corners[1].y + (corners[2].y - corners[1].y) * yF;
+            for (let x = 0; x < dW; x++) {
+                const xF = x / dW;
+                const srcX = Math.floor(lx + (rx - lx) * xF); const srcY = Math.floor(ly + (ry - ly) * xF);
+                if (srcX >= 0 && srcX < cW && srcY >= 0 && srcY < cH) {
+                    const sIdx = (srcY * cW + srcX) * 4; const dIdx = (y * dW + x) * 4;
+                    dData.data[dIdx] = sData.data[sIdx]; dData.data[dIdx+1] = sData.data[sIdx+1];
+                    dData.data[dIdx+2] = sData.data[sIdx+2]; dData.data[dIdx+3] = 255;
+                }
+            }
+        }
+        dCtx.putImageData(dData, 0, 0); return dCanvas.toDataURL('image/jpeg', 0.95);
+    }
+
+    // --- PREVIEW & SLIDERS LOGIC ---
+    function syncVerticalSliderWidth() {
+        const a4Box = document.getElementById('a4Box');
+        const ySlider = document.getElementById('ySlider');
+        if (a4Box && ySlider && !document.getElementById('section-preview').classList.contains('hide')) {
+            ySlider.style.width = a4Box.offsetHeight + 'px';
+        }
+    }
+    window.addEventListener('resize', syncVerticalSliderWidth);
+
+    function resetSliders() {
+        document.getElementById('sizeSlider').value = 100;
+        document.getElementById('xSlider').value = 50;
+        document.getElementById('ySlider').value = 50;
+        updatePreview();
+    }
+
+    function setupPreview() {
+        showSection('section-preview');
+        resetSliders();
+        if(currentProcess === 'front_back') document.getElementById('layoutContainer').classList.remove('hide');
+        else document.getElementById('layoutContainer').classList.add('hide');
+        setTimeout(syncVerticalSliderWidth, 50); // Sync after UI renders
+        updatePreview();
+    }
+
+    function updatePreview() {
+        const layout = document.getElementById('layoutSelect')?.value || 'vertical';
+        const frontObj = document.getElementById('frontPreviewObj');
+        const backObj = document.getElementById('backPreviewObj');
+        
+        const sf = document.getElementById('sizeSlider').value / 100;
+        const posX = document.getElementById('xSlider').value / 100;
+        const posY = document.getElementById('ySlider').value / 100;
+
+        document.getElementById('sizeValText').innerText = Math.round(sf * 100) + '%';
+
+        const cardW_pct = ((CARD_W * sf) / A4_W) * 100; const cardH_pct = ((CARD_H * sf) / A4_H) * 100;
+        const gapX_pct = ((10 * sf) / A4_W) * 100; const gapY_pct = ((15 * sf) / A4_H) * 100;
+
+        frontObj.classList.add('hide'); backObj.classList.add('hide');
+
+        let bbW_pct = cardW_pct; let bbH_pct = cardH_pct;
+        if (currentProcess === 'front_back') {
+            if (layout === 'vertical') bbH_pct = (cardH_pct * 2) + gapY_pct;
+            else bbW_pct = (cardW_pct * 2) + gapX_pct;
+        }
+
+        const startX = (100 - bbW_pct) * posX;
+        // Rotated -90deg slider: Value 100 is visually at top. Map to startY = 0.
+        const startY = (100 - bbH_pct) * (1 - posY);
+
+        function applyStyle(obj, src, t, l) {
+            obj.classList.remove('hide');
+            obj.style.width = cardW_pct + '%'; obj.style.height = cardH_pct + '%';
+            obj.style.backgroundImage = `url(${src})`;
+            obj.style.top = t + '%'; obj.style.left = l + '%';
+        }
+
+        if (currentProcess === 'front') { applyStyle(frontObj, frontImgData, startY, startX); } 
+        else if (currentProcess === 'back') { applyStyle(backObj, backImgData, startY, startX); } 
+        else {
+            if (layout === 'vertical') {
+                applyStyle(frontObj, frontImgData, startY, startX);
+                applyStyle(backObj, backImgData, startY + cardH_pct + gapY_pct, startX);
+            } else {
+                applyStyle(frontObj, frontImgData, startY, startX);
+                applyStyle(backObj, backImgData, startY, startX + cardW_pct + gapX_pct);
+            }
+        }
+    }
+
+    // --- MODAL & EXACT DOWNLOAD ---
+    function openNameDialog(type) {
+        downloadTypePending = type; document.getElementById('nameDialog').classList.remove('hide');
+        const input = document.getElementById('fileNameInput'); input.focus();
+        setTimeout(() => { input.setSelectionRange(input.value.length, input.value.length); }, 10);
+    }
+    
+    function closeNameDialog() { document.getElementById('nameDialog').classList.add('hide'); }
+
+    document.getElementById('confirmNameBtn').addEventListener('click', () => {
+        let name = document.getElementById('fileNameInput').value.trim();
+        if(!name) name = "A4_Document"; closeNameDialog(); executeDownload(downloadTypePending, name);
+    });
+
+    function executeDownload(type, fileName) {
+        document.getElementById('loader').classList.remove('hide');
+        setTimeout(() => {
+            const dpi = 300; const scale = dpi / 25.4;
+            const layout = document.getElementById('layoutSelect').value;
+            
+            const sf = document.getElementById('sizeSlider').value / 100;
+            const posX = document.getElementById('xSlider').value / 100;
+            const posY = document.getElementById('ySlider').value / 100;
+
+            const pW = A4_W * scale, pH = A4_H * scale;
+            const cW = CARD_W * sf * scale, cH = CARD_H * sf * scale;
+            const gapX = 10 * sf * scale, gapY = 15 * sf * scale;
+            
+            let bbW = cW, bbH = cH;
+            if(currentProcess === 'front_back') {
+                if(layout === 'vertical') bbH = (cH * 2) + gapY;
+                else bbW = (cW * 2) + gapX;
+            }
+
+            const startX = (pW - bbW) * posX;
+            const startY = (pH - bbH) * (1 - posY);
+
+            let items = [];
+            if (currentProcess === 'front') items.push({s: frontImgData, x: startX, y: startY});
+            else if (currentProcess === 'back') items.push({s: backImgData, x: startX, y: startY});
+            else {
+                if(layout === 'vertical'){
+                    items.push({s: frontImgData, x: startX, y: startY});
+                    items.push({s: backImgData, x: startX, y: startY + cH + gapY});
+                } else {
+                    items.push({s: frontImgData, x: startX, y: startY});
+                    items.push({s: backImgData, x: startX + cW + gapX, y: startY});
+                }
+            }
+
+            if (type === 'JPG') {
+                const canvas = document.createElement('canvas'); canvas.width = pW; canvas.height = pH;
+                const ctx = canvas.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, pW, pH);
+                ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+
+                let loaded = 0;
+                items.forEach(it => {
+                    const img = new Image();
+                    img.onload = () => {
+                        ctx.drawImage(img, it.x, it.y, cW, cH);
+                        loaded++;
+                        if(loaded === items.length) {
+                            canvas.toBlob(blob => {
+                                const url = URL.createObjectURL(blob); const link = document.createElement('a');
+                                link.download = `${fileName}.jpg`; link.href = url; link.click();
+                                document.getElementById('loader').classList.add('hide');
+                            }, 'image/jpeg', 1.0);
+                        }
+                    };
+                    img.src = it.s;
+                });
+            } else {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ format: 'a4', unit: 'mm' });
+                items.forEach(it => {
+                    const mmX = it.x / scale; const mmY = it.y / scale;
+                    const mmW = cW / scale; const mmH = cH / scale;
+                    doc.addImage(it.s, 'JPEG', mmX, mmY, mmW, mmH, undefined, 'SLOW');
+                });
+                doc.save(`${fileName}.pdf`);
+                document.getElementById('loader').classList.add('hide');
+            }
+        }, 100);
+    }
+
+    function resetApp() {
+        currentProcess = ''; currentStep = ''; frontImgData = null; backImgData = null; pts = [];
+        document.getElementById('fileInput').value = ''; showSection('section-upload');
+    }
+</script>
+
+</body>
+</html>
