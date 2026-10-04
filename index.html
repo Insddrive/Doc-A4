@@ -9,55 +9,49 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
-        body { background-color: #ffffff; -webkit-tap-highlight-color: transparent; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: #111827; }
+        body { background-color: #f8fafc; -webkit-tap-highlight-color: transparent; font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; color: #0f172a; }
         .hide { display: none !important; }
         
-        /* 4-Point Crop Styles (Precision Crosshair) */
+        /* 4-Point Crop Styles */
         #cropContainer { position: relative; display: inline-block; touch-action: none; user-select: none; }
-        #cropImg { max-width: 100%; max-height: 65vh; display: block; border: 1px solid #e5e7eb; }
+        #cropImg { max-width: 100%; max-height: 65vh; display: block; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
         #cropSvg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         
         .crop-handle {
-            position: absolute; width: 44px; height: 44px; margin-top: -22px; margin-left: -22px;
+            position: absolute; width: 48px; height: 48px; margin-top: -24px; margin-left: -24px;
             background-color: transparent; border-radius: 50%; display: flex; align-items: center; justify-content: center;
             cursor: grab; pointer-events: auto; z-index: 10;
         }
-        .crop-handle::before { content: ''; position: absolute; width: 12px; height: 12px; border: 2px solid #ef4444; border-radius: 50%; background: transparent; transition: 0.2s; }
-        .crop-handle::after { content: ''; position: absolute; width: 2px; height: 2px; background: #ef4444; border-radius: 50%; }
-        .crop-handle:active::before { border-color: #000; transform: scale(1.3); }
-        .crop-handle:active::after { background: #000; }
+        .crop-handle::before { content: ''; position: absolute; width: 16px; height: 16px; border: 3px solid #6366f1; border-radius: 50%; background: #ffffff; box-shadow: 0 4px 6px rgba(0,0,0,0.15); transition: 0.2s; }
+        .crop-handle::after { content: ''; position: absolute; width: 4px; height: 4px; background: #6366f1; border-radius: 50%; }
+        .crop-handle:active::before { border-color: #0f172a; transform: scale(1.2); }
+        .crop-handle:active::after { background: #0f172a; }
         .crop-handle:active { cursor: grabbing; }
 
         /* A4 Preview */
         .a4-preview {
             width: 100%; aspect-ratio: 210 / 297;
-            background: #fff; position: relative; border: 1px solid #d1d5db; overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+            background: #ffffff; position: relative; border: 1px solid #e2e8f0; overflow: hidden;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.01); border-radius: 6px;
         }
-        .card-preview { position: absolute; border: 1px solid rgba(0,0,0,0.1); background-size: cover; background-position: center; transition: all 0.05s linear; }
+        .card-preview { position: absolute; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.15); background-size: cover; background-position: center; transition: all 0.05s linear; border-radius: 3px; }
         
-        /* Ultra Minimal Sliders */
-        .minimal-slider { -webkit-appearance: none; background: transparent; outline: none; width: 100%; margin: 0; }
-        .minimal-slider::-webkit-slider-thumb {
-            -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%;
-            background: #111827; cursor: pointer; margin-top: -6px; transition: transform 0.1s;
-            border: 2px solid #fff; box-shadow: 0 0 0 1px #111827;
+        /* Premium Sliders */
+        .modern-slider { -webkit-appearance: none; background: transparent; outline: none; width: 100%; margin: 0; }
+        .modern-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 22px; width: 22px; border-radius: 50%;
+            background: #0f172a; cursor: pointer; margin-top: -8px; transition: transform 0.1s;
+            border: 3px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
-        .minimal-slider::-webkit-slider-runnable-track { width: 100%; height: 2px; cursor: pointer; background: #e5e7eb; border-radius: 2px; }
-        .minimal-slider:active::-webkit-slider-thumb { transform: scale(1.2); }
+        .modern-slider::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #cbd5e1; border-radius: 3px; }
+        .modern-slider:active::-webkit-slider-thumb { transform: scale(1.1); background: #4f46e5; }
 
-        /* Loader & Modals */
-        #loader { position: fixed; inset: 0; background: rgba(255,255,255,0.9); display: flex; justify-content: center; align-items: center; color: #111; z-index: 60; flex-direction: column; }
-        .spinner { border: 2px solid #e5e7eb; border-top: 2px solid #111; border-radius: 50%; width: 30px; height: 30px; animation: spin 0.8s linear infinite; margin-bottom: 1rem; }
+        /* Loader & Animations */
+        #loader { position: fixed; inset: 0; background: rgba(248, 250, 252, 0.9); display: flex; justify-content: center; align-items: center; color: #0f172a; z-index: 60; flex-direction: column; backdrop-filter: blur(5px); }
+        .spinner { border: 4px solid #e2e8f0; border-top: 4px solid #4f46e5; border-radius: 50%; width: 45px; height: 45px; animation: spin 0.8s linear infinite; margin-bottom: 1rem; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .animate-fade-in { animation: fadeIn 0.15s ease-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
-        
-        /* Buttons */
-        .btn-minimal { border: 1px solid #e5e7eb; background: #fff; transition: all 0.2s; }
-        .btn-minimal:hover { background: #f9fafb; border-color: #d1d5db; }
-        .btn-dark { background: #111827; color: #fff; transition: all 0.2s; }
-        .btn-dark:hover { background: #000; }
+        .animate-fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body class="antialiased">
@@ -65,68 +59,69 @@
 <!-- Global Loader -->
 <div id="loader" class="hide">
     <div class="spinner"></div>
-    <p class="text-sm font-medium tracking-wide">Processing...</p>
 </div>
 
-<!-- Custom File Name Dialog (Minimal) -->
-<div id="nameDialog" class="hide fixed inset-0 bg-gray-900 bg-opacity-30 flex justify-center items-center z-50 px-4 backdrop-blur-sm">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in border border-gray-100">
-        <div class="p-6">
-            <h3 class="text-base font-semibold mb-1">Save File As</h3>
-            <p class="text-xs text-gray-500 mb-5">Enter a name for your document.</p>
-            <input type="text" id="fileNameInput" value="A4_Document" class="w-full border-b-2 border-gray-200 py-2 text-sm outline-none focus:border-black transition rounded-none bg-transparent">
+<!-- Custom File Name Dialog -->
+<div id="nameDialog" class="hide fixed inset-0 bg-slate-900 bg-opacity-30 flex justify-center items-center z-50 px-4 backdrop-blur-sm">
+    <div class="bg-white rounded-[24px] shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in border border-slate-100">
+        <div class="p-8 pb-6">
+            <h3 class="text-xl font-extrabold text-slate-800 mb-4">Save File As</h3>
+            <input type="text" id="fileNameInput" value="A4_Document" class="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3.5 font-bold text-slate-700 outline-none focus:border-indigo-500 focus:bg-white transition-all">
         </div>
-        <div class="flex border-t border-gray-100 bg-gray-50">
-            <button onclick="closeNameDialog()" class="flex-1 p-3 text-xs font-semibold text-gray-500 hover:text-black transition">CANCEL</button>
-            <button id="confirmNameBtn" class="flex-1 p-3 text-xs font-bold text-black border-l border-gray-200 hover:bg-gray-100 transition">DOWNLOAD</button>
+        <div class="flex border-t border-slate-100">
+            <button onclick="closeNameDialog()" class="flex-1 p-4 font-bold text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 transition-all">Cancel</button>
+            <button id="confirmNameBtn" class="flex-1 p-4 font-bold text-white bg-slate-900 hover:bg-slate-800 transition-all">Download</button>
         </div>
     </div>
 </div>
 
 <!-- Custom Notification Dialog -->
-<div id="notifyDialog" class="hide fixed inset-0 bg-gray-900 bg-opacity-30 flex justify-center items-center z-50 px-4 backdrop-blur-sm">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in text-center border border-gray-100">
-        <div class="p-6">
-            <div class="w-10 h-10 rounded-full bg-black flex items-center justify-center mx-auto mb-4">
-                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+<div id="notifyDialog" class="hide fixed inset-0 bg-slate-900 bg-opacity-30 flex justify-center items-center z-50 px-4 backdrop-blur-sm">
+    <div class="bg-white rounded-[24px] shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in text-center border border-slate-100">
+        <div class="p-8 pb-6">
+            <div class="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-slate-200">
+                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
             </div>
-            <p id="notifyMessage" class="text-sm font-medium text-gray-700 mb-2"></p>
+            <p id="notifyMessage" class="text-base font-bold text-slate-600"></p>
         </div>
-        <div class="border-t border-gray-100">
-            <button id="notifyOkBtn" class="w-full p-3 text-xs font-bold text-black hover:bg-gray-50 transition">CONTINUE</button>
+        <div class="border-t border-slate-100">
+            <button id="notifyOkBtn" class="w-full p-4 font-bold text-white bg-slate-900 hover:bg-slate-800 transition-all">Continue</button>
         </div>
     </div>
 </div>
 
-<div class="max-w-xl mx-auto p-4 py-8">
+<div class="max-w-4xl mx-auto p-4 py-8">
 
     <!-- UPLOAD SECTION -->
-    <div id="section-upload" class="text-center mt-4">
-        <h1 class="text-2xl font-bold tracking-tight mb-8">Doc To A4</h1>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button onclick="startProcess('front_back')" class="btn-minimal flex flex-col items-center justify-center p-6 rounded-xl h-36">
-                <svg class="w-8 h-8 text-gray-800 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
-                <span class="text-xs font-bold tracking-wider">FRONT + BACK</span>
+    <div id="section-upload" class="text-center mt-8">
+        <h1 class="text-4xl font-black text-slate-900 tracking-tight mb-12">Doc To A4</h1>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-xl mx-auto">
+            <button onclick="startProcess('front_back')" class="bg-white group flex flex-col items-center justify-center p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-indigo-100 border-2 border-transparent hover:border-indigo-50 transition-all duration-300 h-56 relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-b from-transparent to-slate-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
+                    <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
+                </div>
+                <span class="text-xl font-extrabold text-slate-800 relative z-10">Front + Back</span>
             </button>
-            <button onclick="startProcess('front')" class="btn-minimal flex flex-col items-center justify-center p-6 rounded-xl h-36">
-                <svg class="w-8 h-8 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
-                <span class="text-xs font-bold tracking-wider text-gray-500">FRONT ONLY</span>
-            </button>
-            <button onclick="startProcess('back')" class="btn-minimal flex flex-col items-center justify-center p-6 rounded-xl h-36">
-                <svg class="w-8 h-8 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-                <span class="text-xs font-bold tracking-wider text-gray-500">BACK ONLY</span>
+            <button onclick="startProcess('front')" class="bg-white group flex flex-col items-center justify-center p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-slate-200 border-2 border-transparent hover:border-slate-100 transition-all duration-300 h-56 relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-b from-transparent to-slate-50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div class="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
+                    <svg class="w-8 h-8 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                </div>
+                <span class="text-xl font-extrabold text-slate-800 relative z-10">Front Only</span>
             </button>
         </div>
         <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
     </div>
 
     <!-- CROP SECTION -->
-    <div id="section-crop" class="hide text-center mt-2">
-        <div class="flex justify-center mb-6">
+    <div id="section-crop" class="hide bg-white p-6 rounded-[2rem] shadow-2xl shadow-slate-200/50 text-center mt-2 max-w-2xl mx-auto">
+        <div class="flex justify-center mb-8">
             <div id="cropContainer">
                 <img id="cropImg" src="" alt="Crop" draggable="false">
                 <svg id="cropSvg">
-                    <polygon id="cropPoly" fill="rgba(17, 24, 39, 0.05)" stroke="#111" stroke-width="1"/>
+                    <polygon id="cropPoly" fill="rgba(99, 102, 241, 0.1)" stroke="#6366f1" stroke-width="2"/>
                 </svg>
                 <div id="pt1" class="crop-handle"></div>
                 <div id="pt2" class="crop-handle"></div>
@@ -135,79 +130,82 @@
             </div>
         </div>
 
-        <div class="flex justify-between gap-3">
-            <button onclick="resetApp()" class="btn-minimal flex-1 py-3 rounded-lg flex justify-center items-center">
-                <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+        <div class="flex justify-between gap-4">
+            <button onclick="resetApp()" class="w-16 py-4 bg-slate-100 text-slate-500 font-bold rounded-2xl hover:bg-slate-200 transition-all flex justify-center items-center">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
-            <button onclick="rotateImage()" class="btn-minimal flex-1 py-3 rounded-lg flex justify-center items-center text-xs font-bold tracking-widest">
-                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                ROTATE
+            <button onclick="rotateImage()" class="flex-1 py-4 bg-slate-50 text-slate-700 font-bold rounded-2xl hover:bg-slate-100 transition-all flex justify-center items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Rotate
             </button>
-            <button onclick="confirmCrop()" class="btn-dark flex-1 py-3 rounded-lg flex justify-center items-center">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+            <button onclick="confirmCrop()" class="flex-1 py-4 bg-slate-900 text-white font-bold rounded-2xl hover:bg-slate-800 transition-all flex justify-center items-center shadow-lg shadow-slate-200">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
             </button>
         </div>
     </div>
 
     <!-- PREVIEW & ADJUSTMENTS SECTION -->
-    <div id="section-preview" class="hide mt-4">
+    <div id="section-preview" class="hide bg-white p-6 md:p-10 rounded-[2rem] shadow-2xl shadow-slate-200/50 mt-4 max-w-3xl mx-auto">
         
-        <!-- Minimal Grid Layout for A4 & Edge Sliders -->
-        <div class="flex justify-center mb-8">
-            <div class="flex items-stretch gap-2.5">
+        <!-- Interactive Layout -->
+        <div class="flex justify-center mb-10">
+            <div class="flex items-stretch gap-4">
                 
                 <!-- Left Column (X Slider + A4 Paper + Size Slider) -->
-                <div class="flex flex-col gap-2.5 w-[280px] sm:w-[320px]">
-                    <!-- X Slider (Top Edge) -->
-                    <input type="range" id="xSlider" min="0" max="100" value="50" class="minimal-slider" oninput="updatePreview()">
+                <div class="flex flex-col gap-4 w-[280px] sm:w-[340px]">
+                    <div class="w-full">
+                        <input type="range" id="xSlider" min="0" max="100" value="50" class="modern-slider" oninput="updatePreview()">
+                    </div>
                     
-                    <!-- A4 Box -->
                     <div class="a4-preview w-full" id="a4Box">
                         <div id="frontPreviewObj" class="card-preview hide"></div>
                         <div id="backPreviewObj" class="card-preview hide"></div>
                     </div>
                     
-                    <!-- Size Slider (Bottom Edge) - Min 100% (No reduction) -->
-                    <input type="range" id="sizeSlider" min="100" max="250" value="100" class="minimal-slider" oninput="updatePreview()">
+                    <div class="w-full">
+                        <input type="range" id="sizeSlider" min="100" max="250" value="100" class="modern-slider" oninput="updatePreview()">
+                    </div>
                     
-                    <!-- Tiny labels for bottom slider -->
-                    <div class="flex justify-between items-center mt-1 px-1">
-                        <span class="text-[10px] font-bold text-gray-400 tracking-wider">SIZE <span id="sizeValText" class="text-black ml-1">100%</span></span>
-                        <button onclick="resetSliders()" class="text-[10px] font-bold text-gray-400 hover:text-black tracking-wider flex items-center">
-                            <svg class="w-3 h-3 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                            RESET
+                    <div class="flex justify-between items-center px-2 mt-1">
+                        <span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Size <span id="sizeValText" class="text-slate-800 ml-1">100%</span></span>
+                        <button onclick="resetSliders()" class="text-xs font-bold text-slate-400 hover:text-slate-800 uppercase tracking-widest flex items-center transition-colors">
+                            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            Reset
                         </button>
                     </div>
                 </div>
 
                 <!-- Right Column (Y Slider) -->
-                <!-- Wrapper ensures rotation works smoothly and dynamically matches height -->
-                <div class="relative w-4" id="ySliderContainer">
-                    <input type="range" id="ySlider" min="0" max="100" value="50" class="minimal-slider absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 origin-center" oninput="updatePreview()">
+                <div class="relative w-6 pt-8 pb-12" id="ySliderContainer">
+                    <input type="range" id="ySlider" min="0" max="100" value="50" class="modern-slider absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 origin-center" oninput="updatePreview()">
                 </div>
 
             </div>
         </div>
 
-        <div id="layoutContainer" class="mb-4">
-            <select id="layoutSelect" onchange="updatePreview()" class="w-full bg-white border border-gray-200 rounded-lg p-3 text-xs font-bold tracking-widest text-gray-700 outline-none focus:border-black transition">
-                <option value="vertical">LAYOUT: VERTICAL</option>
-                <option value="horizontal">LAYOUT: HORIZONTAL</option>
-            </select>
-        </div>
+        <!-- Options & Export -->
+        <div class="max-w-sm mx-auto">
+            <div id="layoutContainer" class="mb-5">
+                <select id="layoutSelect" onchange="updatePreview()" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-slate-300 focus:bg-white transition-all cursor-pointer">
+                    <option value="vertical">Vertical Layout</option>
+                    <option value="horizontal">Horizontal Layout</option>
+                </select>
+            </div>
 
-        <div class="flex flex-col gap-3">
-            <button onclick="openNameDialog('JPG')" class="btn-minimal w-full py-3.5 rounded-lg flex justify-center items-center text-xs font-bold tracking-widest text-black">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-                DOWNLOAD JPG
-            </button>
-            <button onclick="openNameDialog('PDF')" class="btn-minimal w-full py-3.5 rounded-lg flex justify-center items-center text-xs font-bold tracking-widest text-black">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                DOWNLOAD PDF
-            </button>
-            <button onclick="resetApp()" class="w-full py-3 mt-1 bg-transparent text-gray-400 hover:text-black font-bold text-xs tracking-widest transition">
-                START NEW
-            </button>
+            <div class="flex flex-col gap-3">
+                <button onclick="openNameDialog('JPG')" class="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl flex justify-center items-center shadow-lg shadow-indigo-200 transition-all">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download JPG
+                </button>
+                <button onclick="openNameDialog('PDF')" class="w-full py-4 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl flex justify-center items-center shadow-lg shadow-slate-200 transition-all">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Download PDF
+                </button>
+                <button onclick="resetApp()" class="w-full py-4 mt-2 bg-transparent text-slate-400 hover:text-slate-800 font-bold rounded-2xl transition-all flex justify-center items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                    Home
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -316,7 +314,7 @@
                 frontImgData = resultImg;
                 if (currentProcess === 'front_back') {
                     currentStep = 'back'; document.getElementById('loader').classList.add('hide');
-                    showNotification("Front side OK. Upload Back side.", () => { document.getElementById('fileInput').click(); });
+                    showNotification("Upload the Back side.", () => { document.getElementById('fileInput').click(); });
                     return;
                 }
             } else { backImgData = resultImg; }
@@ -357,7 +355,6 @@
         dCtx.putImageData(dData, 0, 0); return dCanvas.toDataURL('image/jpeg', 0.95);
     }
 
-    // --- PREVIEW & SLIDERS LOGIC ---
     function syncVerticalSliderWidth() {
         const a4Box = document.getElementById('a4Box');
         const ySlider = document.getElementById('ySlider');
@@ -379,7 +376,7 @@
         resetSliders();
         if(currentProcess === 'front_back') document.getElementById('layoutContainer').classList.remove('hide');
         else document.getElementById('layoutContainer').classList.add('hide');
-        setTimeout(syncVerticalSliderWidth, 50); // Sync after UI renders
+        setTimeout(syncVerticalSliderWidth, 50); 
         updatePreview();
     }
 
@@ -406,7 +403,6 @@
         }
 
         const startX = (100 - bbW_pct) * posX;
-        // Rotated -90deg slider: Value 100 is visually at top. Map to startY = 0.
         const startY = (100 - bbH_pct) * (1 - posY);
 
         function applyStyle(obj, src, t, l) {
@@ -429,7 +425,6 @@
         }
     }
 
-    // --- MODAL & EXACT DOWNLOAD ---
     function openNameDialog(type) {
         downloadTypePending = type; document.getElementById('nameDialog').classList.remove('hide');
         const input = document.getElementById('fileNameInput'); input.focus();
