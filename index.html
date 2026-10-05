@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Doc to A4</title>
     
+    <!-- PWA Links -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#f8fafc">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -13,8 +18,8 @@
         .hide { display: none !important; }
         
         /* 4-Point Crop Styles */
-        #cropContainer { position: relative; display: inline-block; touch-action: none; user-select: none; }
-        #cropImg { max-width: 100%; max-height: 65vh; display: block; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
+        #cropContainer { position: relative; display: inline-flex; justify-content: center; touch-action: none; user-select: none; max-width: 100%; }
+        #cropImg { max-width: 100%; max-height: 65vh; width: auto; height: auto; display: block; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); object-fit: contain; }
         #cropSvg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         
         .crop-handle {
@@ -28,6 +33,15 @@
         .crop-handle:active::after { background: #0f172a; }
         .crop-handle:active { cursor: grabbing; }
 
+        /* Premium Center Move Handle */
+        #centerDragHandle {
+            position: absolute; width: 44px; height: 44px; margin-top: -22px; margin-left: -22px;
+            background: rgba(79, 70, 229, 0.85); border: 2.5px solid #ffffff; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; cursor: move; pointer-events: auto; z-index: 12;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.25); backdrop-filter: blur(2px);
+        }
+        #centerDragHandle:active { background: rgba(15, 23, 42, 0.9); transform: scale(1.05); }
+
         /* A4 Preview */
         .a4-preview {
             width: 100%; aspect-ratio: 210 / 297;
@@ -37,14 +51,14 @@
         .card-preview { position: absolute; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.15); background-size: cover; background-position: center; transition: all 0.05s linear; border-radius: 3px; }
         
         /* Premium Sliders */
-        .modern-slider { -webkit-appearance: none; background: transparent; outline: none; width: 100%; margin: 0; }
+        .modern-slider { -webkit-appearance: none; background: transparent; outline: none; width: 100%; margin: 0; touch-action: pan-y; }
         .modern-slider::-webkit-slider-thumb {
-            -webkit-appearance: none; height: 22px; width: 22px; border-radius: 50%;
-            background: #0f172a; cursor: pointer; margin-top: -8px; transition: transform 0.1s;
-            border: 3px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%;
+            background: #0f172a; cursor: pointer; margin-top: -9px; transition: transform 0.1s;
+            border: 3px solid #ffffff; box-shadow: 0 3px 6px rgba(0,0,0,0.3);
         }
         .modern-slider::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #cbd5e1; border-radius: 3px; }
-        .modern-slider:active::-webkit-slider-thumb { transform: scale(1.1); background: #4f46e5; }
+        .modern-slider:active::-webkit-slider-thumb { transform: scale(1.15); background: #4f46e5; }
 
         /* Loader & Animations */
         #loader { position: fixed; inset: 0; background: rgba(248, 250, 252, 0.9); display: flex; justify-content: center; align-items: center; color: #0f172a; z-index: 60; flex-direction: column; backdrop-filter: blur(5px); }
@@ -127,6 +141,9 @@
                 <div id="pt2" class="crop-handle"></div>
                 <div id="pt3" class="crop-handle"></div>
                 <div id="pt4" class="crop-handle"></div>
+                <div id="centerDragHandle">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                </div>
             </div>
         </div>
 
@@ -147,11 +164,9 @@
     <!-- PREVIEW & ADJUSTMENTS SECTION -->
     <div id="section-preview" class="hide bg-white p-6 md:p-10 rounded-[2rem] shadow-2xl shadow-slate-200/50 mt-4 max-w-3xl mx-auto">
         
-        <!-- Interactive Layout -->
         <div class="flex justify-center mb-10">
             <div class="flex items-stretch gap-4">
                 
-                <!-- Left Column (X Slider + A4 Paper + Size Slider) -->
                 <div class="flex flex-col gap-4 w-[280px] sm:w-[340px]">
                     <div class="w-full">
                         <input type="range" id="xSlider" min="0" max="100" value="50" class="modern-slider" oninput="updatePreview()">
@@ -175,7 +190,6 @@
                     </div>
                 </div>
 
-                <!-- Right Column (Y Slider) -->
                 <div class="relative w-6 pt-8 pb-12" id="ySliderContainer">
                     <input type="range" id="ySlider" min="0" max="100" value="50" class="modern-slider absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 -rotate-90 origin-center" oninput="updatePreview()">
                 </div>
@@ -183,13 +197,11 @@
             </div>
         </div>
 
-        <!-- Options & Export -->
         <div class="max-w-sm mx-auto">
-            <div id="layoutContainer" class="mb-5">
-                <select id="layoutSelect" onchange="updatePreview()" class="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm font-bold text-slate-700 outline-none focus:border-slate-300 focus:bg-white transition-all cursor-pointer">
-                    <option value="vertical">Vertical Layout</option>
-                    <option value="horizontal">Horizontal Layout</option>
-                </select>
+            
+            <div id="layoutContainer" class="mb-5 flex bg-slate-100 p-1.5 rounded-[1.25rem]">
+                <button id="btnVertical" onclick="setLayoutMode('vertical')" class="flex-1 py-3 text-sm font-extrabold rounded-xl bg-white shadow-sm text-slate-800 transition-all">Vertical</button>
+                <button id="btnHorizontal" onclick="setLayoutMode('horizontal')" class="flex-1 py-3 text-sm font-extrabold rounded-xl text-slate-500 hover:text-slate-800 transition-all">Horizontal</button>
             </div>
 
             <div class="flex flex-col gap-3">
@@ -201,8 +213,8 @@
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     Download PDF
                 </button>
-                <button onclick="resetApp()" class="w-full py-4 mt-2 bg-transparent text-slate-400 hover:text-slate-800 font-bold rounded-2xl transition-all flex justify-center items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+                <button onclick="resetApp()" class="w-full py-4 mt-2 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-2xl shadow-lg shadow-slate-200 transition-all flex justify-center items-center">
+                    <svg class="w-5 h-5 mr-2 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
                     Home
                 </button>
             </div>
@@ -214,11 +226,25 @@
     let currentProcess = ''; let currentStep = ''; 
     let frontImgData = null; let backImgData = null; 
     let originalImgObj = null; let downloadTypePending = ''; let notifyCallback = null;
+    let currentLayout = 'vertical'; 
 
     const A4_W = 210, A4_H = 297;
     const CARD_W = 85.60, CARD_H = 53.98;
-    let pts = [{x: 10, y: 10}, {x: 90, y: 10}, {x: 90, y: 90}, {x: 10, y: 90}];
-    let activePoint = null;
+    
+    let pts = [];
+    
+    let activeTouches = {}; 
+    let activeMousePoint = null; 
+    let isTouchCenter = false;
+    let touchCenterId = null;
+    let isMouseCenter = false;
+    let dragStartX = 0, dragStartY = 0;
+
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration failed:', err));
+        });
+    }
 
     function showSection(id) {
         ['section-upload', 'section-crop', 'section-preview'].forEach(s => document.getElementById(s).classList.add('hide'));
@@ -254,54 +280,201 @@
         const img = document.getElementById('cropImg');
         img.onload = () => {
             originalImgObj = new Image(); originalImgObj.src = img.src;
-            pts = [{x: 10, y: 10}, {x: 90, y: 10}, {x: 90, y: 90}, {x: 10, y: 90}]; updateSVG();
+            
+            const w = img.offsetWidth; const h = img.offsetHeight;
+            let boxW = w * 0.85; 
+            let boxH = boxW * (CARD_H / CARD_W); 
+            
+            if (boxH > h * 0.85) { 
+                boxH = h * 0.85; 
+                boxW = boxH * (CARD_W / CARD_H); 
+            }
+            
+            const cx = w / 2; const cy = h / 2;
+            pts = [
+                {x: ((cx - boxW/2) / w) * 100, y: ((cy - boxH/2) / h) * 100},
+                {x: ((cx + boxW/2) / w) * 100, y: ((cy - boxH/2) / h) * 100},
+                {x: ((cx + boxW/2) / w) * 100, y: ((cy + boxH/2) / h) * 100},
+                {x: ((cx - boxW/2) / w) * 100, y: ((cy + boxH/2) / h) * 100}
+            ];
+            updateSVG();
         };
         img.src = imgSrc;
     }
 
     function rotateImage() {
         if(!originalImgObj) return;
-        const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
-        canvas.width = originalImgObj.naturalHeight; canvas.height = originalImgObj.naturalWidth;
-        ctx.translate(canvas.width / 2, canvas.height / 2); ctx.rotate(90 * Math.PI / 180);
-        ctx.drawImage(originalImgObj, -originalImgObj.naturalWidth / 2, -originalImgObj.naturalHeight / 2);
-        document.getElementById('cropImg').src = canvas.toDataURL('image/png');
+        document.getElementById('loader').classList.remove('hide');
+        
+        setTimeout(() => {
+            const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+            canvas.width = originalImgObj.naturalHeight; canvas.height = originalImgObj.naturalWidth;
+            ctx.translate(canvas.width / 2, canvas.height / 2); ctx.rotate(90 * Math.PI / 180);
+            ctx.drawImage(originalImgObj, -originalImgObj.naturalWidth / 2, -originalImgObj.naturalHeight / 2);
+            
+            const newSrc = canvas.toDataURL('image/jpeg', 1.0);
+            originalImgObj.src = newSrc; 
+            
+            const img = document.getElementById('cropImg');
+            img.onload = () => {
+                const w = img.offsetWidth; const h = img.offsetHeight;
+                
+                let boxW = w * 0.85; 
+                let boxH = boxW * (CARD_H / CARD_W); 
+                if (boxH > h * 0.85) { boxH = h * 0.85; boxW = boxH * (CARD_W / CARD_H); }
+                
+                const cx = w / 2; const cy = h / 2;
+                pts = [
+                    {x: ((cx - boxW/2) / w) * 100, y: ((cy - boxH/2) / h) * 100},
+                    {x: ((cx + boxW/2) / w) * 100, y: ((cy - boxH/2) / h) * 100},
+                    {x: ((cx + boxW/2) / w) * 100, y: ((cy + boxH/2) / h) * 100},
+                    {x: ((cx - boxW/2) / w) * 100, y: ((cy + boxH/2) / h) * 100}
+                ];
+                updateSVG();
+                document.getElementById('loader').classList.add('hide');
+            };
+            img.src = newSrc;
+        }, 50);
     }
 
     function updateSVG() {
         const img = document.getElementById('cropImg');
         const w = img.offsetWidth; const h = img.offsetHeight; let pointsStr = "";
+        
         pts.forEach((p, i) => {
             const px = (p.x / 100) * w; const py = (p.y / 100) * h; pointsStr += `${px},${py} `;
             const handle = document.getElementById(`pt${i+1}`);
             handle.style.left = `${px}px`; handle.style.top = `${py}px`;
         });
         document.getElementById('cropPoly').setAttribute('points', pointsStr.trim());
+
+        const centerX = (pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4;
+        const centerY = (pts[0].y + pts[1].y + pts[2].y + pts[3].y) / 4;
+        const centerHandle = document.getElementById('centerDragHandle');
+        centerHandle.style.left = `${(centerX / 100) * w}px`;
+        centerHandle.style.top = `${(centerY / 100) * h}px`;
     }
 
     const container = document.getElementById('cropContainer');
-    function getPointerPos(e) {
+    
+    function getPointerPos(ev) {
         const rect = container.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return { x: clientX - rect.left, y: clientY - rect.top };
+        return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
     }
 
-    function handleStart(e, index) { e.preventDefault(); activePoint = index; }
-    function handleMove(e) {
-        if (activePoint === null) return; e.preventDefault();
-        const pos = getPointerPos(e); const w = container.offsetWidth; const h = container.offsetHeight;
-        let px = Math.max(0, Math.min(100, (pos.x / w) * 100)); let py = Math.max(0, Math.min(100, (pos.y / h) * 100));
-        pts[activePoint] = {x: px, y: py}; updateSVG();
+    function handleStart(e, index) { 
+        if (e.type === 'touchstart') {
+            for(let i=0; i<e.changedTouches.length; i++) {
+                activeTouches[e.changedTouches[i].identifier] = index;
+            }
+        } else {
+            e.preventDefault();
+            activeMousePoint = index;
+        }
     }
-    function handleEnd() { activePoint = null; }
+    
+    function handleCenterStart(e) {
+        if (e.type === 'touchstart') {
+            isTouchCenter = true;
+            const t = e.changedTouches[0];
+            touchCenterId = t.identifier;
+            const pos = getPointerPos(t);
+            dragStartX = pos.x; dragStartY = pos.y;
+        } else {
+            e.preventDefault();
+            isMouseCenter = true;
+            const pos = getPointerPos(e);
+            dragStartX = pos.x; dragStartY = pos.y;
+        }
+    }
+
+    function handleMove(e) {
+        const w = container.offsetWidth; const h = container.offsetHeight;
+        let needsUpdate = false;
+
+        if (e.type === 'touchmove') {
+            let hasActiveTouch = false;
+            for(let i=0; i<e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (activeTouches[t.identifier] !== undefined || (isTouchCenter && t.identifier === touchCenterId)) {
+                    hasActiveTouch = true;
+                    break;
+                }
+            }
+            if(!hasActiveTouch) return; 
+
+            if(e.cancelable) e.preventDefault();
+
+            for(let i=0; i<e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (activeTouches[t.identifier] !== undefined) {
+                    const idx = activeTouches[t.identifier];
+                    const pos = getPointerPos(t);
+                    pts[idx].x = Math.max(0, Math.min(100, (pos.x / w) * 100));
+                    pts[idx].y = Math.max(0, Math.min(100, (pos.y / h) * 100));
+                    needsUpdate = true;
+                } else if (isTouchCenter && t.identifier === touchCenterId) {
+                    const pos = getPointerPos(t);
+                    const dx = ((pos.x - dragStartX) / w) * 100;
+                    const dy = ((pos.y - dragStartY) / h) * 100;
+                    dragStartX = pos.x; dragStartY = pos.y;
+                    pts.forEach(p => {
+                        p.x = Math.max(0, Math.min(100, p.x + dx));
+                        p.y = Math.max(0, Math.min(100, p.y + dy));
+                    });
+                    needsUpdate = true;
+                }
+            }
+        } else {
+            if (activeMousePoint !== null) {
+                e.preventDefault();
+                const pos = getPointerPos(e);
+                pts[activeMousePoint].x = Math.max(0, Math.min(100, (pos.x / w) * 100));
+                pts[activeMousePoint].y = Math.max(0, Math.min(100, (pos.y / h) * 100));
+                needsUpdate = true;
+            } else if (isMouseCenter) {
+                e.preventDefault();
+                const pos = getPointerPos(e);
+                const dx = ((pos.x - dragStartX) / w) * 100;
+                const dy = ((pos.y - dragStartY) / h) * 100;
+                dragStartX = pos.x; dragStartY = pos.y;
+                pts.forEach(p => {
+                    p.x = Math.max(0, Math.min(100, p.x + dx));
+                    p.y = Math.max(0, Math.min(100, p.y + dy));
+                });
+                needsUpdate = true;
+            }
+        }
+        if (needsUpdate) updateSVG();
+    }
+
+    function handleEnd(e) { 
+        if (e.type === 'touchend' || e.type === 'touchcancel') {
+            for(let i=0; i<e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                delete activeTouches[t.identifier];
+                if (t.identifier === touchCenterId) {
+                    isTouchCenter = false;
+                    touchCenterId = null;
+                }
+            }
+        } else {
+            activeMousePoint = null; 
+            isMouseCenter = false;
+        }
+    }
 
     [0,1,2,3].forEach(i => {
         const el = document.getElementById(`pt${i+1}`);
         el.addEventListener('mousedown', (e) => handleStart(e, i));
         el.addEventListener('touchstart', (e) => handleStart(e, i), {passive: false});
     });
-    window.addEventListener('mousemove', handleMove);
+
+    const centerHandle = document.getElementById('centerDragHandle');
+    centerHandle.addEventListener('mousedown', handleCenterStart);
+    centerHandle.addEventListener('touchstart', handleCenterStart, {passive: false});
+
+    window.addEventListener('mousemove', handleMove, {passive: false});
     window.addEventListener('touchmove', handleMove, {passive: false});
     window.addEventListener('mouseup', handleEnd);
     window.addEventListener('touchend', handleEnd);
@@ -370,6 +543,24 @@
         document.getElementById('ySlider').value = 50;
         updatePreview();
     }
+    
+    function setLayoutMode(mode) {
+        currentLayout = mode;
+        const btnV = document.getElementById('btnVertical');
+        const btnH = document.getElementById('btnHorizontal');
+        
+        const activeClass = "flex-1 py-3 text-sm font-extrabold rounded-xl bg-white shadow-sm text-slate-800 transition-all";
+        const inactiveClass = "flex-1 py-3 text-sm font-extrabold rounded-xl text-slate-500 hover:text-slate-800 transition-all";
+        
+        if(mode === 'vertical') {
+            btnV.className = activeClass;
+            btnH.className = inactiveClass;
+        } else {
+            btnH.className = activeClass;
+            btnV.className = inactiveClass;
+        }
+        updatePreview();
+    }
 
     function setupPreview() {
         showSection('section-preview');
@@ -381,7 +572,7 @@
     }
 
     function updatePreview() {
-        const layout = document.getElementById('layoutSelect')?.value || 'vertical';
+        const layout = currentLayout;
         const frontObj = document.getElementById('frontPreviewObj');
         const backObj = document.getElementById('backPreviewObj');
         
@@ -442,7 +633,7 @@
         document.getElementById('loader').classList.remove('hide');
         setTimeout(() => {
             const dpi = 300; const scale = dpi / 25.4;
-            const layout = document.getElementById('layoutSelect').value;
+            const layout = currentLayout;
             
             const sf = document.getElementById('sizeSlider').value / 100;
             const posX = document.getElementById('xSlider').value / 100;
